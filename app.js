@@ -1,4 +1,4 @@
-const express = require('express')
+const express = require("express")
 
 const morgan = require('morgan')
 
@@ -15,6 +15,7 @@ const cors = require('cors')
 const express = require('express')
 const bodyParser = require('body-parser')
 const morgan = require('morgan')
+const route = require("./routes/route")
 
 app.use(express.json({limit:'100kb'}))
 
@@ -39,5 +40,8 @@ const limiter = rateLimit({
     windowMS: 60 * 60 * 1000, //block in 1 hour
     message: 'Too many request from this IP'
 })
+
+//Route
+route(app)
 
 module.exports = app
