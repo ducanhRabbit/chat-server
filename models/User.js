@@ -51,10 +51,22 @@ const User = new Schema({
     updatedAt: {
         type: Date,
     },
+
+    verified: {
+        type: Boolean,
+        default: false,
+    },
+    otp: {
+        type: String,
+    },
+    otpExpiredTime: {
+        type: Date,
+    },
 })
 
-User.methods.correctPassword = async (candidatePass, userPass)=>{
-    return await bscrypt.compare(candidatePass,userPass)
+User.methods.correctPassword = async (candidatePass, userPass) => {
+    return await bscrypt.compare(candidatePass, userPass)
 }
 
-module.exports = mongoose.model('User',User)
+module.exports = mongoose.model('User', User)
+
