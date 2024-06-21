@@ -1,7 +1,9 @@
 const { generateToken } = require("../config/token/token")
 const User = require("../models/User")
+
 const filterObj = require("../utils/filterObj")
 const otpGenerator = require('otp-generator')
+
 
 class AuthController {
     async login(req, res, next){
@@ -41,6 +43,7 @@ class AuthController {
             })
         }
         catch(err){
+
             next(err)
         }
 
@@ -107,6 +110,7 @@ class AuthController {
                 status:'error',
                 message:'Email is invalid or OTP is expired'
             })
+
         }
     }
 }

@@ -51,6 +51,7 @@ const User = new Schema({
     updatedAt: {
         type: Date,
     },
+
     verified: {
         type: Boolean,
         default: false,
@@ -68,3 +69,4 @@ User.methods.correctPassword = async (candidatePass, userPass) => {
 }
 
 module.exports = mongoose.model('User', User)
+
