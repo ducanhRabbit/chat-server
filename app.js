@@ -1,3 +1,6 @@
+const dotenv = require("dotenv").config({
+    path:'config.env'
+});
 const express = require("express")
 
 const morgan = require('morgan')
@@ -12,9 +15,10 @@ const mongoSanitize = require('express-mongo-sanitize')
 
 const cors = require('cors')
 
-const express = require('express')
 const bodyParser = require('body-parser')
-const morgan = require('morgan')
+
+
+
 const route = require("./routes/route")
 
 app.use(express.json({limit:'100kb'}))
@@ -30,9 +34,8 @@ app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({extended:'true'}))
 
 app.use(helmet())
-if(process.env.NODE_ENV === 'development'){
-    app.use(morgan('dev'))
-}
+
+app.use(morgan('dev'))
 
 // Prevent DDOS attack
 const limiter = rateLimit({

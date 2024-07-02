@@ -7,6 +7,8 @@ const otpGenerator = require('otp-generator')
 const promisify = require("util")
 const jwt = require("jsonwebtoken")
 
+const mailService = require("../sevices/mail")
+
 class AuthController {
     async login(req, res, next) {
         try {
@@ -92,6 +94,15 @@ class AuthController {
         await User.findByIdAndUpdate(userID, {
             otp: newOTP,
             otpExpiredTime: otpExpiredTime
+        })
+
+        // Send Email
+
+        mailService.sendSGMail({
+            from: '123@gmail.com',
+            to:'example@gmail.com',
+            subject:'OTP for Moiz',
+            text:`Your OTP is ${newOTP}`
         })
 
         res.status(200).json({
