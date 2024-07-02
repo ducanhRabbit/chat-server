@@ -1,5 +1,6 @@
 const mongoose = require('mongoose')
 
+console.log(process.env.DBURI)
 const DB = process.env.DBURI.replace('<password>', process.env.DBPASSWORD)
 const connectToDB = ()=>{
     mongoose.connect(DB,{
