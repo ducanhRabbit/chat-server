@@ -3,7 +3,7 @@ const authController = require('../controllers/AuthController')
 const router = require('express').Router()
 
 router.post('/login',authController.login)
-router.post('/register',authController.register)
+router.post('/register',authController.register,authController.sendOTP)
 router.post('/sendOtp',authController.sendOTP)
 router.post('/verifyOtp',authController.verifiedOTP)
 router.post('/forgotPassword',authController.forgotPassword)
