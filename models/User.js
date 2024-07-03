@@ -56,6 +56,7 @@ const User = new Schema({
     updatedAt: {
         type: Date,
     },
+
     verified: {
         type: Boolean,
         default: false,
@@ -93,6 +94,7 @@ User.methods.correctPassword = async (candidatePass, userPass) => {
     return await bcrypt.compare(candidatePass, userPass)
 }
 
+
 User.methods.correctOTP = async (candidateOTP, userOTP) => {
     return await bcrypt.compare(candidateOTP, userOTP)
 }
@@ -118,3 +120,4 @@ User.methods.changedPasswordAfter = function (JWTTimeStamp) {
   };
 
 module.exports = mongoose.model('User', User)
+

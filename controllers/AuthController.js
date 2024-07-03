@@ -1,10 +1,14 @@
 const { generateToken } = require("../config/token/token")
 const User = require("../models/User")
+
 const filterObj = require("../utils/filterObj")
 const otpGenerator = require('otp-generator')
+
 const promisify = require("util")
 const jwt = require("jsonwebtoken")
+
 const sendRSMail = require('../sevices/mail')
+
 class AuthController {
     async login(req, res, next) {
         try {
@@ -42,7 +46,9 @@ class AuthController {
                 token
             })
         }
+
         catch (err) {
+
             next(err)
         }
 
@@ -254,6 +260,7 @@ class AuthController {
                 status: 'error',
                 message: 'User recently changed password. Please log in again!'
             })
+
         }
 
         req.user = findUser
