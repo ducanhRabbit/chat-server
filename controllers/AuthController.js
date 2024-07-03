@@ -4,7 +4,7 @@ const filterObj = require("../utils/filterObj")
 const otpGenerator = require('otp-generator')
 const promisify = require("util")
 const jwt = require("jsonwebtoken")
-const mailService = require("../sevices/mail")
+const sendRSMail = require('../sevices/mail')
 class AuthController {
     async login(req, res, next) {
         try {
@@ -49,54 +49,61 @@ class AuthController {
     }
     async register(req, res, next) {
         const { firstName, lastName, email, password } = req.body
-        const filteredBody = filterObj(req.body, 'firstName', 'lastName', 'password')
-        const findUser = await User.findOne(email)
+
+        const filteredBody = filterObj(req.body, 'firstName', 'lastName', 'password', 'email')
+        const findUser = await User.findOne({ email })
 
         if (findUser && findUser.verified) {
             res.status(400), json({
                 status: 'error',
                 message: 'Email is already in use. Please login'
             })
+            return
         } else if (findUser) {
-            const updateUser = await User.findOneAndUpdate({ email }, filterObj, {
+            const updateUser = await User.findOneAndUpdate({ email }, {email}, {
                 new: true,
                 validateModifiedOnly: true
             })
 
             req.userID = findUser._id
+            next()
         } else {
             const newUser = await User.create(filteredBody)
 
             // Generate OTP
 
-            req.userId = newUser._id
+            req.userID = newUser._id
+            next()
         }
 
 
     }
     async sendOTP(req, res, next) {
         const { userID } = req
-
         const newOTP = otpGenerator.generate(6, {
             lowerCaseAlphabets: false,
             upperCaseAlphabets: false,
             specialChars: false
         })
+      
 
         const otpExpiredTime = Date.now() + 10 * 60 * 1000
 
-        await User.findByIdAndUpdate(userID, {
-            otp: newOTP,
+        const user = await User.findByIdAndUpdate({_id:userID}, {
             otpExpiredTime: otpExpiredTime
         })
+        user.otp = newOTP.toString();
+        user.save({ new: true, validateModifiedOnly: true })
 
         // Send Email
 
-        mailService.sendSGMail({
-            from: '123@gmail.com',
-            to:'example@gmail.com',
-            subject:'OTP for Moiz',
-            text:`Your OTP is ${newOTP}`
+        sendRSMail({
+            from: 'onboarding@resend.dev',
+            to: 'renyk97@gmail.com',
+            subject: 'Verified OTP',
+            html: `<p>OTP for verification is <strong>${newOTP}</strong>!</p>`
+        }).then(() => {
+            console.log('success')
         })
 
         res.status(200).json({
@@ -120,12 +127,13 @@ class AuthController {
             })
         }
 
-        if (!findUser.correctOTP(otp, findUser.otp)) {
+        if (!(await findUser.correctOTP(otp, findUser.otp))) {
             res.status(400).json({
                 status: 'error',
                 message: 'OTP is incorrect'
             })
         }
+        console.log(await findUser.correctOTP(otp, findUser.otp))
 
         findUser.verified = true
         findUser.otp = undefined
@@ -180,18 +188,18 @@ class AuthController {
         }
     }
 
-    async resetPassword (req,res,next){
+    async resetPassword(req, res, next) {
         const hashedToken = crypto.createHash('sha256').update(req.param.token).digest('hex')
 
         const findUser = await User.findOne({
             passwordResetToken: hashedToken,
-            passwordResetExpires:{$gt: Date.now()}
+            passwordResetExpires: { $gt: Date.now() }
         })
 
-        if(!findUser){
+        if (!findUser) {
             res.status(400).json({
-                status:'error',
-                message:'Token is expired or invalid'
+                status: 'error',
+                message: 'Token is expired or invalid'
             })
             return
         }
@@ -207,24 +215,24 @@ class AuthController {
         //Send an email to inform new password
 
         res.status(200).json({
-            status:'success',
-            message:'Password reset successfully',
+            status: 'success',
+            message: 'Password reset successfully',
             token
         })
     }
 
-    async protect(req,res,next){
+    async protect(req, res, next) {
         let token
-        if(req.headers.authorization && req.headers.authorization.startsWith("Bearer")){
+        if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
             token = req.header.authorization.split(' ')[1]
-        }else if(req.cookies.jwt){
+        } else if (req.cookies.jwt) {
             token = req.cookies.jwt
         }
 
-        if(!token){
+        if (!token) {
             res.status(401).json({
-                status:'error',
-                message:'You are not logged in! Please log in to get access.'
+                status: 'error',
+                message: 'You are not logged in! Please log in to get access.'
             })
             return
         }
@@ -233,17 +241,17 @@ class AuthController {
 
         const findUser = await User.findById(decoded.userID)
 
-        if(!findUser){
+        if (!findUser) {
             res.status(400).json({
-                status:'error',
-                message:"User doesn't exist"
+                status: 'error',
+                message: "User doesn't exist"
             })
             return
         }
 
-        if(findUser.changedPasswordAfter(decoded.iat)){
+        if (findUser.changedPasswordAfter(decoded.iat)) {
             res.status(400).json({
-                status:'error',
+                status: 'error',
                 message: 'User recently changed password. Please log in again!'
             })
         }

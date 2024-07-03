@@ -2,8 +2,9 @@ const mongoose = require('mongoose')
 const crypto = require('crypto')
 const { Schema } = mongoose
 
-const bscrypt = require('bcrypt')
+const bcrypt = require('bcryptjs')
 const { type } = require('os')
+const { log } = require('console')
 const User = new Schema({
     firstName: {
         type: String,
@@ -68,16 +69,18 @@ const User = new Schema({
 })
 
 User.pre("save", async function (next) {
-    if (!this.isModified("otp") || !this.otp) return next();
+    if (!this.isModified("otp")) {
+        console.log('skip')
+        return next();}
   
     this.otp = await bcrypt.hash(this.otp.toString(), 12);
-  
+    console.log(this.otp)
     next();
   });
 
 
 User.pre("save", async function (next) {
-    if (!this.isModified("password") || !this.password) return next();
+    if (!this.isModified("password")) return next();
   
     this.password = await bcrypt.hash(this.password, 12);
 
@@ -87,11 +90,11 @@ User.pre("save", async function (next) {
   });
 
 User.methods.correctPassword = async (candidatePass, userPass) => {
-    return await bscrypt.compare(candidatePass, userPass)
+    return await bcrypt.compare(candidatePass, userPass)
 }
 
 User.methods.correctOTP = async (candidateOTP, userOTP) => {
-    return await bscrypt.compare(candidateOTP, userOTP)
+    return await bcrypt.compare(candidateOTP, userOTP)
 }
 
 User.methods.createResetPasswordToken = function(){

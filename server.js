@@ -16,6 +16,8 @@ process.on("uncaughtException", (err) => {
 
 // Connect DB
 db.connectToDB()
+
+
 server.listen(port, () => {
     console.log(`App is listening on port ${port}`)
 })
