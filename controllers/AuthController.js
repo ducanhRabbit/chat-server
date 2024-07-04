@@ -5,6 +5,7 @@ const otpGenerator = require('otp-generator')
 const promisify = require("util")
 const jwt = require("jsonwebtoken")
 const sendRSMail = require('../sevices/mail')
+const crypto = require('crypto')
 class AuthController {
     async login(req, res, next) {
         try {
@@ -17,8 +18,8 @@ class AuthController {
                 })
             }
 
-            const findUser = User.findOne({ email }).select('+password')
-
+            const findUser = await User.findOne({ email: email }).select('+password')
+            console.log(findUser)
             if (!findUser || !findUser.password) {
                 res.status(400).json({
                     status: 'error',
@@ -27,7 +28,7 @@ class AuthController {
                 return
             }
 
-            if (!findUser || (await !findUser.correctPassword(password, findUser.password))) {
+            if (!findUser || !(await findUser.correctPassword(password, findUser.password))) {
                 res.status(400).json({
                     status: 'error',
                     message: 'Email or password is incorrect'
@@ -53,20 +54,12 @@ class AuthController {
         const filteredBody = filterObj(req.body, 'firstName', 'lastName', 'password', 'email')
         const findUser = await User.findOne({ email })
 
-        if (findUser && findUser.verified) {
-            res.status(400), json({
+        if (findUser) {
+            res.status(400).json({
                 status: 'error',
                 message: 'Email is already in use. Please login'
             })
             return
-        } else if (findUser) {
-            const updateUser = await User.findOneAndUpdate({ email }, {email}, {
-                new: true,
-                validateModifiedOnly: true
-            })
-
-            req.userID = findUser._id
-            next()
         } else {
             const newUser = await User.create(filteredBody)
 
@@ -85,11 +78,11 @@ class AuthController {
             upperCaseAlphabets: false,
             specialChars: false
         })
-      
 
-        const otpExpiredTime = Date.now() + 10 * 60 * 1000
 
-        const user = await User.findByIdAndUpdate({_id:userID}, {
+        const otpExpiredTime = Date.now() + 10 * 60 * 60 * 1000
+
+        const user = await User.findByIdAndUpdate({ _id: userID }, {
             otpExpiredTime: otpExpiredTime
         })
         user.otp = newOTP.toString();
@@ -120,23 +113,28 @@ class AuthController {
                 $gt: Date.now()
             }
         })
+
         if (!findUser) {
             res.status(400).json({
                 status: 'error',
                 message: 'Email is invalid or OTP is expired'
             })
+            return
         }
 
-        if (!(await findUser.correctOTP(otp, findUser.otp))) {
+
+        if (findUser.otp && !(await findUser.correctOTP(otp, findUser.otp))) {
             res.status(400).json({
                 status: 'error',
                 message: 'OTP is incorrect'
             })
+            return
         }
-        console.log(await findUser.correctOTP(otp, findUser.otp))
+
 
         findUser.verified = true
         findUser.otp = undefined
+        findUser.otpExpiredTime = undefined
 
         await findUser.save({
             new: true,
@@ -144,7 +142,7 @@ class AuthController {
         })
 
         const token = generateToken(findUser._id)
-
+        console.log(token, findUser._id)
         res.status(200).json({
             status: 'succes',
             message: 'Logged is successfully',
@@ -155,7 +153,7 @@ class AuthController {
 
     async forgotPassword(req, res, next) {
         const { email } = req.body
-        const findUser = await User.findOne(email)
+        const findUser = await User.findOne({email})
         if (!findUser) {
             res.status(400).json({
                 status: 'error',
@@ -164,12 +162,22 @@ class AuthController {
             return
         }
 
-        const resetToken = User.createResetPasswordToken()
+        const resetToken = findUser.createResetPasswordToken()
 
-        const resetURL = ''
+        await findUser.save({
+            validateModifiedOnly:true
+        })
 
         try {
             // send email reset password
+            const resetURL = `http://localhost:3000/auth/new-password?token=${resetToken}`
+
+            sendRSMail({
+                from: 'onboarding@resend.dev',
+                to: 'renyk97@gmail.com',
+                subject: 'Reset Password',
+                html: `<p>Reset link: <strong>${resetURL}</strong>!</p>`
+            })
 
             res.status(200).json({
                 status: 'success',
@@ -179,7 +187,7 @@ class AuthController {
             User.passwordResetToken = undefined
             User.passwordResetExpires = undefined
 
-            await User.save({ validateBeforeSave: false })
+
 
             res.status(500).json({
                 status: 'error',
@@ -189,7 +197,7 @@ class AuthController {
     }
 
     async resetPassword(req, res, next) {
-        const hashedToken = crypto.createHash('sha256').update(req.param.token).digest('hex')
+        const hashedToken = crypto.createHash('sha256').update(req.body.token).digest('hex')
 
         const findUser = await User.findOne({
             passwordResetToken: hashedToken,
@@ -209,7 +217,7 @@ class AuthController {
         User.passwordResetToken = undefined
         User.passwordResetExpires = undefined
 
-        await User.save()
+        await findUser.save()
 
         const token = generateToken(User._id)
         //Send an email to inform new password

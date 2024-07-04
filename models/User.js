@@ -37,8 +37,8 @@ const User = new Schema({
     password: {
         type: String,
     },
-    passwordConfirm:{
-        type:String
+    passwordConfirm: {
+        type: String
     },
     passwordChangedAt: {
         type: Date,
@@ -69,31 +69,35 @@ const User = new Schema({
 })
 
 User.pre("save", async function (next) {
-    if (!this.isModified("otp")) {
-        console.log('skip')
-        return next();}
-  
-    this.otp = await bcrypt.hash(this.otp.toString(), 12);
     console.log(this.otp)
+    if (!this.isModified("otp") || !this.otp) {
+        console.log('skip')
+        return next();
+    }
+    console.log(this.otp.toString(), "FROM PRE SAVE HOOK");
+    this.otp = await bcrypt.hash(this.otp.toString(), 12);
     next();
-  });
+});
 
 
-User.pre("save", async function (next) {
-    if (!this.isModified("password")) return next();
-  
+User.pre("save",async function (next) {
+    console.log(this.isModified("password")) 
+    if (!this.isModified("password") || !this.password) {
+        console.log('skipPass')
+        return next()};
+
     this.password = await bcrypt.hash(this.password, 12);
 
     this.passwordChangedAt = Date.now() - 1000
-  
-    next();
-  });
 
-User.methods.correctPassword = async (candidatePass, userPass) => {
+    next();
+});
+
+User.methods.correctPassword = async function(candidatePass, userPass){
     return await bcrypt.compare(candidatePass, userPass)
 }
 
-User.methods.correctOTP = async (candidateOTP, userOTP) => {
+User.methods.correctOTP = async function(candidateOTP, userOTP){
     return await bcrypt.compare(candidateOTP, userOTP)
 }
 
@@ -102,19 +106,19 @@ User.methods.createResetPasswordToken = function(){
 
     this.passwordResetToken = crypto.createHash('sha256').update(resetToken).digest('hex')
 
-    this.passwordResetExpires = Date.now() +10*60*1000
+    this.passwordResetExpires = Date.now() + 10 * 60 * 1000
     return resetToken
 }
 
 User.methods.changedPasswordAfter = function (JWTTimeStamp) {
     if (this.passwordChangedAt) {
-    //   const changedTimeStamp = parseInt(
-    //     this.passwordChangedAt.getTime() / 1000,
-    //     10
-    //   );
-      return JWTTimeStamp < this.passwordChangedAt;
+        //   const changedTimeStamp = parseInt(
+        //     this.passwordChangedAt.getTime() / 1000,
+        //     10
+        //   );
+        return JWTTimeStamp < this.passwordChangedAt;
     }
     return false;
-  };
+};
 
 module.exports = mongoose.model('User', User)
