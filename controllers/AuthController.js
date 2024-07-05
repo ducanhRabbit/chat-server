@@ -1,11 +1,16 @@
 const { generateToken } = require("../config/token/token")
 const User = require("../models/User")
+
 const filterObj = require("../utils/filterObj")
 const otpGenerator = require('otp-generator')
+
 const promisify = require("util")
 const jwt = require("jsonwebtoken")
+
 const sendRSMail = require('../sevices/mail')
+
 const crypto = require('crypto')
+
 class AuthController {
     async login(req, res, next) {
         try {
@@ -44,7 +49,9 @@ class AuthController {
                 token
             })
         }
+
         catch (err) {
+
             next(err)
         }
 
@@ -246,8 +253,10 @@ class AuthController {
                 message: 'Password reset successfully',
                 token
             })
+
         }catch(err){
             next(err)
+
         }
     }
 
